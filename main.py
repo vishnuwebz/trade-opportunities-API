@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from services.data_collection import fetch_sector_market_news
 from services.ai_analysis import generate_sector_report_markdown
-from core.auth import SessionInfo, get_current_session  # NEW import
+from core.auth import SessionInfo, get_current_session, get_rate_limited_session
 
 app = FastAPI(title="Trade Opportunities API", version="0.1.0")
 
@@ -31,7 +31,7 @@ async def analyze_sector(
         max_length=50,
         description="Sector name to analyze, e.g., pharmaceuticals, technology, agriculture.",
     ),
-    session: SessionInfo = Depends(get_current_session),  # NEW dependency
+    session: SessionInfo = Depends(get_rate_limited_session),  # NEW dependency
 ):
     """
     Implementation overview:
