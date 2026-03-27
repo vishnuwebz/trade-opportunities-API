@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Path
 from pydantic import BaseModel
 
-from services.data_collection import fetch_sector_market_news  # NEW import
+from services.data_collection import fetch_sector_market_news
+from services.ai_analysis import generate_sector_report_markdown  # NEW import
 
 app = FastAPI(title="Trade Opportunities API", version="0.1.0")
 
@@ -31,15 +32,15 @@ async def analyze_sector(
     )
 ):
     """
-    Temporary implementation that demonstrates:
-    - Input validation on the sector path parameter
-    - Delegation to a data collection layer
-    - Basic markdown report composition
+    Implementation overview:
 
-    Later this function will:
-    - Collect recent market data/news for the sector using real web search
-    - Call an LLM (e.g., Gemini) with that data
-    - Generate a richer, AI-driven markdown report
+    1. Validate and normalize the sector input.
+    2. Delegate market data collection to the data_collection service.
+    3. Delegate markdown report generation to the AI analysis service.
+
+    In the final version:
+    - data_collection will fetch real market/news data using web search or APIs.
+    - ai_analysis will call an LLM (e.g., Gemini) to analyze that data and produce a richer report.
     """
     normalized_sector = sector.strip().lower()
 
@@ -49,45 +50,10 @@ async def analyze_sector(
             detail="Sector must contain only alphabetic characters.",
         )
 
-    # Use the data collection layer (currently stubbed)
     news_items = await fetch_sector_market_news(normalized_sector)
 
-    news_section_lines = [
-        "## Recent Market News",
-        "",
-    ]
-    if news_items:
-        news_section_lines.extend(item.to_bullet_point() for item in news_items)
-    else:
-        news_section_lines.append(
-            "- No recent news items found in the stub implementation."
-        )
+    report_markdown = await generate_sector_report_markdown(
+        normalized_sector, news_items
+    )
 
-    news_section = "\n".join(news_section_lines)
-
-    dummy_markdown = f"""# Trade Opportunities Report: {normalized_sector.title()}
-
-## Overview
-
-This is a placeholder report for the **{normalized_sector}** sector in India.
-In the final implementation, this section will summarize the current market landscape and key growth drivers.
-
-## Key Opportunities
-
-- Opportunity 1: Example opportunity in the {normalized_sector} sector.
-- Opportunity 2: Example opportunity in the {normalized_sector} sector.
-- Opportunity 3: Example opportunity in the {normalized_sector} sector.
-
-{news_section}
-
-## Risks and Challenges
-
-- Risk 1: Example regulatory or market risk.
-- Risk 2: Example operational or supply chain challenge.
-
-## Conclusion
-
-This is a dummy conclusion. The final report will be generated using live market data and LLM analysis.
-"""
-
-    return AnalysisResponse(sector=normalized_sector, report_markdown=dummy_markdown)
+    return AnalysisResponse(sector=normalized_sector, report_markdown=report_markdown)
