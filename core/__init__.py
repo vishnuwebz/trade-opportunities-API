@@ -1,0 +1,1 @@
+# Core application-level utilities such as authentication and session tracking live here.
