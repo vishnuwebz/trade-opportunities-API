@@ -1,6 +1,9 @@
+from dotenv import load_dotenv
 import os
 from typing import Optional
 
+# Load .env file at import time
+load_dotenv()
 
 def get_env_str(name: str, default: Optional[str] = None) -> Optional[str]:
     """
@@ -13,5 +16,5 @@ def get_env_str(name: str, default: Optional[str] = None) -> Optional[str]:
 
 
 # GNews-specific configuration
-GNEWS_API_KEY_ENV = "e9baa635867a89f1a72b5285a8c722b1"
+GNEWS_API_KEY_ENV = "GNEWS_API_KEY"
 GNEWS_BASE_URL = "https://gnews.io/api/v4/search"

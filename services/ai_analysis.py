@@ -1,52 +1,120 @@
 import logging
 from typing import List
 
+from google import genai  # Gemini SDK[web:20]
 from services.data_collection import MarketNewsItem
 
 logger = logging.getLogger("trade_opportunities.ai_analysis")
 
+gemini_client = genai.Client()
+GEMINI_MODEL_NAME = "gemini-3-flash-preview"
 
 async def generate_sector_report_markdown(
     sector: str, news_items: List[MarketNewsItem]
 ) -> str:
     """
-    Generate a structured markdown report for a given sector.
+    Generate a structured markdown report for a given sector using Gemini.
 
-    In the final implementation, this function will:
-    - Take structured market data (news, trends, policies)
-    - Call an LLM (e.g., Gemini) with a carefully designed prompt
-    - Use the LLM response to build a richer report
+    Flow:
+    - Build a contextual prompt using recent market news for the sector.
+    - Ask Gemini to produce a markdown report with defined sections.
+    - Fall back to a deterministic template if the LLM call fails.
     """
     logger.info(
-        "Generating markdown report for sector=%s using %d news items (stub AI)",
+        "Generating markdown report via Gemini for sector=%s using %d news items",
         sector,
         len(news_items),
     )
 
+    news_context = _build_news_context(sector, news_items)
+
+    system_instructions = (
+        "You are a senior equity research analyst specializing in Indian markets.\n"
+        "Your task is to analyze the given sector and recent news, and produce a "
+        "structured markdown report focused on trade and investment opportunities.\n"
+        "The audience is product and business teams evaluating opportunities in India.\n"
+    )
+
+    user_prompt = f"""
+Sector: {sector}
+
+{news_context}
+
+Please generate a markdown report with the following sections and headings:
+
+# Trade Opportunities Report: <Sector Name>
+
+## Overview
+- Summarize the current market landscape, size, and growth trends for the sector in India.
+- Mention any structural shifts or macro trends that are particularly relevant now.
+
+## Key Opportunities
+- List 3-5 concrete trade or investment opportunities in bullet points.
+- For each, mention what is driving the opportunity (e.g., policy support, export demand, digital adoption).
+
+## Risks and Challenges
+- List 3-5 key risks or challenges (regulatory, competitive, operational, etc.).
+- Highlight which risks are short-term versus structural.
+
+## Suggested Next Steps for Investors or Businesses
+- Suggest practical next steps such as data to validate, stakeholders to talk to, and experiments/pilots to run.
+
+## Conclusion
+- Provide a concise synthesis of why this sector is attractive (or not) right now.
+- Keep the conclusion actionable and focused on trade opportunities.
+
+Important formatting requirements:
+- Use valid markdown only.
+- Use bullet points where helpful.
+- Do not include any disclaimers about being an AI model.
+"""
+
     try:
-        sector_title = sector.title()
+        # Gemini Python SDK call.[web:20]
+        response = await gemini_client.models.generate_content_async(
+            model=GEMINI_MODEL_NAME,
+            contents=[{"role": "user", "parts": [{"text": system_instructions + "\n\n" + user_prompt}]}],
+        )
+        text = response.text or ""
+        if not text.strip():
+            raise ValueError("Empty response from Gemini")
 
-        news_section_lines = [
-            "## Recent Market News",
-            "",
-        ]
+        logger.info("Successfully generated report via Gemini for sector=%s", sector)
+        return text
+    except Exception:
+        logger.exception("Gemini call failed for sector=%s; falling back to template", sector)
+        # Fall back to deterministic template so API still works.
+        return _fallback_template(sector, news_items)
 
-        if news_items:
-            news_section_lines.extend(item.to_bullet_point() for item in news_items)
-        else:
-            news_section_lines.append(
-                "- No recent news items found or data retrieval failed."
-            )
 
-        news_section = "\n".join(news_section_lines)
+def _fallback_template(sector: str, news_items: List[MarketNewsItem]) -> str:
+    logger.warning(
+        "Using fallback deterministic template for sector=%s due to LLM failure",
+        sector,
+    )
 
-        report_markdown = f"""# Trade Opportunities Report: {sector_title}
+    sector_title = sector.title()
+
+    news_section_lines = [
+        "## Recent Market News",
+        "",
+    ]
+
+    if news_items:
+        news_section_lines.extend(item.to_bullet_point() for item in news_items)
+    else:
+        news_section_lines.append(
+            "- No recent news items found or data retrieval failed."
+        )
+
+    news_section = "\n".join(news_section_lines)
+
+    return f"""# Trade Opportunities Report: {sector_title}
 
 ## Overview
 
-This is an initial, rule-based overview for the **{sector}** sector in India.
-In the final implementation, this section will be generated by an LLM such as Gemini,
-summarizing the current market landscape, demand drivers, and competitive dynamics.
+This is a rule-based overview for the **{sector}** sector in India.
+In the complete implementation, this section is normally generated by Gemini based on recent news.
 
 ## Key Opportunities
 
@@ -70,16 +138,30 @@ summarizing the current market landscape, demand drivers, and competitive dynami
 
 ## Conclusion
 
-This report is currently generated using a deterministic template.
-In the complete implementation, this section will be refined using LLM-driven insights
-based on live market data for the {sector} sector in India.
+This report was generated using a deterministic fallback template because the LLM call failed.
 """
 
-        return report_markdown
-    except Exception:
-        logger.exception(
-            "Failed to generate markdown report for sector=%s due to unexpected error",
-            sector,
+
+def _build_news_context(sector: str, news_items: List[MarketNewsItem]) -> str:
+    """
+    Convert news items into a textual context block for the LLM.
+    """
+    if not news_items:
+        return (
+            f"No specific recent news was available for the {sector} sector. "
+            "Base the analysis on general knowledge of the sector in India."
         )
-        # Fallback minimal report.
-        return f"# Trade Opportunities Report: {sector.title()}\n\nAn error occurred while generating a detailed report. Please try again later."
+
+    lines = [
+        f"Here are recent news items related to the {sector} sector in India:",
+        "",
+    ]
+    for idx, item in enumerate(news_items, start=1):
+        lines.append(
+            f"{idx}. Title: {item.title}\n"
+            f"   Source: {item.source}\n"
+            f"   Published: {item.published_at.isoformat()}\n"
+            f"   URL: {item.url}"
+        )
+
+    return "\n".join(lines)
