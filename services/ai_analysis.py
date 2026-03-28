@@ -1,13 +1,20 @@
+import asyncio
 import logging
 from typing import List
 
-from google import genai  # Gemini SDK[web:20]
+from google import genai  # Gemini SDK
 from services.data_collection import MarketNewsItem
+from core.config import get_env_str
 
 logger = logging.getLogger("trade_opportunities.ai_analysis")
 
-gemini_client = genai.Client()
+# Create a single Gemini client instance using API key from env (.env loaded via core.config).
+gemini_api_key = get_env_str("GEMINI_API_KEY")
+logger.info("GEMINI_API_KEY loaded: %s", "yes" if gemini_api_key else "no")
+
+gemini_client = genai.Client(api_key=gemini_api_key)
 GEMINI_MODEL_NAME = "gemini-3-flash-preview"
+
 
 async def generate_sector_report_markdown(
     sector: str, news_items: List[MarketNewsItem]
@@ -70,19 +77,35 @@ Important formatting requirements:
 """
 
     try:
-        # Gemini Python SDK call.[web:20]
-        response = await gemini_client.models.generate_content_async(
-            model=GEMINI_MODEL_NAME,
-            contents=[{"role": "user", "parts": [{"text": system_instructions + "\n\n" + user_prompt}]}],
-        )
-        text = response.text or ""
+        # Run the synchronous Gemini call in a thread so FastAPI event loop is not blocked.
+        def _call_gemini() -> str:
+            response = gemini_client.models.generate_content(
+                model=GEMINI_MODEL_NAME,
+                contents=[
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": system_instructions + "\n\n" + user_prompt
+                            }
+                        ],
+                    }
+                ],
+            )
+            return response.text or ""
+
+        text = await asyncio.to_thread(_call_gemini)
+
         if not text.strip():
             raise ValueError("Empty response from Gemini")
 
         logger.info("Successfully generated report via Gemini for sector=%s", sector)
         return text
     except Exception:
-        logger.exception("Gemini call failed for sector=%s; falling back to template", sector)
+        logger.exception(
+            "Gemini call failed for sector=%s; falling back to deterministic template",
+            sector,
+        )
         # Fall back to deterministic template so API still works.
         return _fallback_template(sector, news_items)
 
