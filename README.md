@@ -5,6 +5,25 @@ for specific sectors in India using GNews and Google Gemini.
 
 ---
 
+## Screenshots
+
+### FastAPI Docs
+
+![FastAPI Swagger UI](assets/FASTAPI-SWAGGER-UI.png)
+
+![FastAPI Redoc UI](assets/FASTAPI-REDOC.png)
+
+### Postman Response
+
+![Postman analyze endpoint](assets/POSTMAN-RESPONSE.png)
+
+### React Frontend
+
+![React dashboard report view : 1](assets/FRONTEND-REPORT-1.png)
+![React dashboard report view: 2](assets/FRONTEND-REPORT-2.png)
+![React dashboard report view: 3](assets/FRONTEND-REPORT-3.png)
+---
+
 ## Features
 
 - Single endpoint: `GET /analyze/{sector}` (e.g. `/analyze/pharmaceuticals`)
