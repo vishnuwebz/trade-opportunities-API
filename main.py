@@ -7,13 +7,24 @@ from services.data_collection import fetch_sector_market_news
 from services.ai_analysis import generate_sector_report_markdown
 from core.auth import SessionInfo, get_rate_limited_session
 from core.logging_config import configure_logging
-
+from fastapi.middleware.cors import CORSMiddleware
 configure_logging()
 logger = logging.getLogger("trade_opportunities.api")
 
 app = FastAPI(title="Trade Opportunities API", version="0.1.0")
 
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 class AnalysisResponse(BaseModel):
     sector: str
     report_markdown: str
