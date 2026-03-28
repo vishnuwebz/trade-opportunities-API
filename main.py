@@ -1,9 +1,15 @@
+import logging
+
 from fastapi import FastAPI, HTTPException, Path, Depends
 from pydantic import BaseModel
 
 from services.data_collection import fetch_sector_market_news
 from services.ai_analysis import generate_sector_report_markdown
-from core.auth import SessionInfo, get_current_session, get_rate_limited_session
+from core.auth import SessionInfo, get_rate_limited_session
+from core.logging_config import configure_logging
+
+configure_logging()
+logger = logging.getLogger("trade_opportunities.api")
 
 app = FastAPI(title="Trade Opportunities API", version="0.1.0")
 
@@ -58,7 +64,19 @@ async def analyze_sector(
             detail="Sector must contain only alphabetic characters.",
         )
 
+    logger.info(
+        "Handling analyze request for sector=%s with session key=%s",
+        normalized_sector,
+        session.api_key,
+    )
+
     news_items = await fetch_sector_market_news(normalized_sector)
+
+    if not news_items:
+        logger.warning(
+            "No market news items available for sector=%s; proceeding with limited data",
+            normalized_sector,
+        )
 
     report_markdown = await generate_sector_report_markdown(
         normalized_sector, news_items

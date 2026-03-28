@@ -1,5 +1,8 @@
+import logging
 from typing import List
 from datetime import datetime, timezone
+
+logger = logging.getLogger("trade_opportunities.data_collection")
 
 
 class MarketNewsItem:
@@ -31,28 +34,39 @@ async def fetch_sector_market_news(sector: str) -> List[MarketNewsItem]:
     - Or perform lightweight scraping of news pages
     - Filter and normalize the results for the given sector
 
-    For now, it returns a fixed set of example items.
     """
-    now = datetime.now(timezone.utc)
+    try:
+        now = datetime.now(timezone.utc)
 
-    # These are dummy items just to show structure.
-    return [
-        MarketNewsItem(
-            title=f"Recent investment trends in the {sector} sector in India",
-            source="Example News",
-            url="https://example.com/article1",
-            published_at=now,
-        ),
-        MarketNewsItem(
-            title=f"Government policy updates impacting the {sector} industry",
-            source="Policy Insights",
-            url="https://example.com/article2",
-            published_at=now,
-        ),
-        MarketNewsItem(
-            title=f"Export opportunities for Indian {sector} companies",
-            source="Trade Watch",
-            url="https://example.com/article3",
-            published_at=now,
-        ),
-    ]
+        # These are dummy items just to show structure.
+        return [
+            MarketNewsItem(
+                title=f"Recent investment trends in the {sector} sector in India",
+                source="Example News",
+                url="https://example.com/article1",
+                published_at=now,
+            ),
+            MarketNewsItem(
+                title=f"Government policy updates impacting the {sector} industry",
+                source="Policy Insights",
+                url="https://example.com/article2",
+                published_at=now,
+            ),
+            MarketNewsItem(
+                title=f"Export opportunities for Indian {sector} companies",
+                source="Trade Watch",
+                url="https://example.com/article3",
+                published_at=now,
+            ),
+        ]
+    except Exception as exc:
+        # When this becomes a real API call, this block will:
+        # - Log the error with context
+        # - Optionally re-raise a custom exception for the API layer
+        logger.exception(
+            "Failed to fetch market news for sector=%s due to unexpected error.",
+            sector
+        )
+        # Returning an empty list here; the API layer decides how to handle this.
+        return []
+

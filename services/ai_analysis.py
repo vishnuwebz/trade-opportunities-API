@@ -1,6 +1,9 @@
+import logging
 from typing import List
 
 from services.data_collection import MarketNewsItem
+
+logger = logging.getLogger("trade_opportunities.ai_analysis")
 
 
 async def generate_sector_report_markdown(
@@ -13,28 +16,31 @@ async def generate_sector_report_markdown(
     - Take structured market data (news, trends, policies)
     - Call an LLM (e.g., Gemini) with a carefully designed prompt
     - Use the LLM response to build a richer report
-
-    For now, it uses a simple rule-based template that incorporates
-    the collected news items.
     """
+    logger.info(
+        "Generating markdown report for sector=%s using %d news items (stub AI)",
+        sector,
+        len(news_items),
+    )
 
-    sector_title = sector.title()
+    try:
+        sector_title = sector.title()
 
-    news_section_lines = [
-        "## Recent Market News",
-        "",
-    ]
+        news_section_lines = [
+            "## Recent Market News",
+            "",
+        ]
 
-    if news_items:
-        news_section_lines.extend(item.to_bullet_point() for item in news_items)
-    else:
-        news_section_lines.append(
-            "- No recent news items found in the stub implementation."
-        )
+        if news_items:
+            news_section_lines.extend(item.to_bullet_point() for item in news_items)
+        else:
+            news_section_lines.append(
+                "- No recent news items found or data retrieval failed."
+            )
 
-    news_section = "\n".join(news_section_lines)
+        news_section = "\n".join(news_section_lines)
 
-    report_markdown = f"""# Trade Opportunities Report: {sector_title}
+        report_markdown = f"""# Trade Opportunities Report: {sector_title}
 
 ## Overview
 
@@ -69,4 +75,11 @@ In the complete implementation, this section will be refined using LLM-driven in
 based on live market data for the {sector} sector in India.
 """
 
-    return report_markdown
+        return report_markdown
+    except Exception:
+        logger.exception(
+            "Failed to generate markdown report for sector=%s due to unexpected error",
+            sector,
+        )
+        # Fallback minimal report.
+        return f"# Trade Opportunities Report: {sector.title()}\n\nAn error occurred while generating a detailed report. Please try again later."
